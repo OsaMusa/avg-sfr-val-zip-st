@@ -1,10 +1,14 @@
 import pgeocode
 import pandas as pd
+import geopandas as gpd
 import streamlit as st
 import pydeck as pdk
+from os import listdir
 from datetime import datetime as dt
 
 st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide")
+
+GEOMETRY_DIR = 'geometries/'
 
 
 @st.cache_data
@@ -15,8 +19,8 @@ def load_data():
 
     # Add Lat/Long
     nomi = pgeocode.Nominatim('us')
-    zillow_raw_df['Latitude'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).latitude
-    zillow_raw_df['Longitude'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).longitude
+    # zillow_raw_df['Latitude'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).latitude
+    # zillow_raw_df['Longitude'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).longitude
     zillow_raw_df['City_Nomi'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).place_name
 
     zillow_raw_df.loc[zillow_raw_df['City'].notna(), 'City_Calc'] = zillow_raw_df['City']
@@ -25,9 +29,9 @@ def load_data():
     zillow_raw_df = zillow_raw_df.drop(columns=['City_Calc', 'City_Nomi'])
     
     # Reorder the fields
-    cols = zillow_raw_df.columns.tolist()
-    cols = cols[0:5] + cols[-2:] + cols[5:-2]
-    zillow_raw_df = zillow_raw_df[cols]
+    # cols = zillow_raw_df.columns.tolist()
+    # cols = cols[0:5] + cols[-2:] + cols[5:-2]
+    # zillow_raw_df = zillow_raw_df[cols]
     
     # Use ZIP as index
     zillow_raw_df.index = zillow_raw_df['ZIP']
@@ -37,13 +41,20 @@ def load_data():
     
     return zillow_raw_df
 
+@st.cache_data
+def load_geometries(state:str):
+    for file in listdir(GEOMETRY_DIR):
+        state = state.lower()
+
+        if file[0:2] == state:
+            return gpd.GeoDataFrame.from_file(GEOMETRY_DIR + file)
+
 
 # Load Data
 zillow_data = load_data()
 val_dates = sorted(zillow_data.columns[6:])
 
 # Page Header
-# st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values by ZIP Code</h1>', unsafe_allow_html=True)
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
 st.write('<h4 style=text-align:center>by ZIP Code</h4>', unsafe_allow_html=True)
 
@@ -57,6 +68,9 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
         states = sorted(zillow_data['State'].unique())
         slctd_state = st.selectbox('Choose a State', states, 0)
         zillow_data = zillow_data[zillow_data['State'] == slctd_state]
+
+        # Load ZIP Geometries for the State
+        zip_geos = load_geometries(slctd_state)
 
     with r1col2:
         # Metroplex Filter
@@ -72,7 +86,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     with r2col1:
         # County Filter
         counties = sorted(zillow_data['County'].unique())
-        slctd_county = st.multiselect('Choose a County', counties, None)
+        slctd_county = st.multiselect('Choose a County', counties, counties[0])
         if len(slctd_county) > 0:
             zillow_data = zillow_data[zillow_data['County'].isin(slctd_county)]
 
@@ -122,35 +136,62 @@ med_zip = zillow_data.loc[zillow_data[date_fltr] == zillow_data.iloc[med_zip_idx
 med_val = zillow_data[date_fltr].median()
 med_zip_val = zillow_data.iloc[med_zip_idx, date_idx]
 
-# Create map dataframe
-map_data = zillow_data.loc[:, ('Latitude', 'Longitude')]
+# Create Map Dataframe
+map_data = pd.DataFrame(index=zillow_data.index)
 map_data['Value_k'] = zillow_data[date_fltr]/1000
 map_data['G_Value'] = 1000 * (255 / map_data['Value_k'] / 4)
-map_data['Value_k'] = map_data['Value_k'].fillna(0)
+map_data['A_Value'] = 255
+map_data.loc[map_data['Value_k'].isna(), 'A_Value'] = 0
+
+# Merge Geometry Dataframe and Map Dataframe
+map_geos = map_data.merge(zip_geos, 'left', left_index=True, right_on='ZCTA5CE10')
+map_geos.index = map_geos['ZCTA5CE10']
+map_geos['Latitude'] = pd.to_numeric(map_geos['INTPTLAT10'])
+map_geos['Longitude'] = pd.to_numeric(map_geos['INTPTLON10'])
+map_geos = gpd.GeoDataFrame(data=map_geos)
+map_geos = map_geos.drop(columns=map_geos.columns[3:-3].tolist())
+cols = map_geos.columns.tolist()
+cols = cols[:3] + cols[-2:] + cols[-3:-2]
+map_geos = map_geos[cols]
 
 # Display 3D Heat Map
 st.subheader(f'Your Heat Map of {dsply_date}')
-st.pydeck_chart(pdk.Deck(
-        map_style=None,
-        initial_view_state=pdk.ViewState(
-            latitude=map_data['Latitude'].mean(),
-            longitude=map_data['Longitude'].mean(),
-            zoom=8,
-            pitch=60,
-        ),
-        layers=[
-            pdk.Layer(
+
+# Column Layer
+column_layer = pdk.Layer(
             'ColumnLayer',
-            data=map_data,
+            data=map_geos,
             get_position='[Longitude, Latitude]',
-            radius=1000,
+            radius=500,
             elevation_scale=25,
             pickable=True,
             extruded=True,
             get_elevation = 'Value_k',
-            get_fill_color = ['255', 'G_Value', '0', 'Value_k'],
-            ),
-        ],
+            get_fill_color = '[255, G_Value, 0, A_Value]',
+            )
+
+# GeoJson Layer
+geojson_layer = pdk.Layer(
+            'GeoJsonLayer',
+            data=map_geos,
+            opacity=0.5,
+            stroked=False,
+            filled=True,
+            pickable=True,
+            get_fill_color='[255, G_Value, 0, A_Value]',
+            )
+
+map_layers=[column_layer, geojson_layer]
+
+st.pydeck_chart(pdk.Deck(
+        map_style=None,
+        initial_view_state=pdk.ViewState(
+            latitude=map_geos['Latitude'].median(),
+            longitude=map_geos['Longitude'].median(),
+            zoom=8,
+            pitch=60,
+        ),
+        layers=map_layers
     ))
 
 # Show Highlight ZIP Values

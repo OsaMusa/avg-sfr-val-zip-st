@@ -6,9 +6,9 @@ import pydeck as pdk
 from os import listdir
 from datetime import datetime as dt
 
-st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
-
 GEOMETRY_DIR = 'geometries/'
+
+st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
 
 
 @st.cache_data(show_spinner='Loading Avg SFR Value Data...')
@@ -30,9 +30,10 @@ def load_data():
     zillow_raw_df.index = zillow_raw_df['ZIP']
     zillow_raw_df = zillow_raw_df.drop(columns='ZIP')
     
-    zillow_raw_df.iloc[:, 6:] = zillow_raw_df.iloc[:, 6:].round(0)
+    zillow_raw_df.iloc[:, 4:] = zillow_raw_df.iloc[:, 4:].round(0)
     
     return zillow_raw_df
+
 
 @st.cache_data(show_spinner='Loading State ZIP Map...')
 def load_geometries(state:str):
@@ -41,11 +42,11 @@ def load_geometries(state:str):
 
         if file[0:2] == state:
             return gpd.GeoDataFrame.from_file(GEOMETRY_DIR + file)
-
+        
 
 # Load Data
 zillow_data = load_data()
-val_dates = sorted(zillow_data.columns[6:])
+val_dates = sorted(zillow_data.columns[4:])
 
 # Page Header
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
@@ -65,11 +66,13 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
 
         # Load ZIP Geometries for the State
         zip_geos = load_geometries(slctd_state)
-
+        
     # Metroplex Filter
     with r1col2:
         zillow_data.loc[:, 'Metro'] = zillow_data.loc[:, 'Metro'].fillna('Unrecognized Metroplex')
         metros = sorted(zillow_data['Metro'].unique())
+        
+        # Make "Unrecognized Metroplex" the last option
         if 'Unrecognized Metroplex' in metros:
             metros.remove('Unrecognized Metroplex')
             metros.append('Unrecognized Metroplex')
@@ -88,6 +91,8 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     with r2col2:
         zillow_data.loc[:, 'City'] = zillow_data.loc[:, 'City'].fillna('Unrecognized City')
         cities = sorted(zillow_data['City'].unique())
+        
+        # Make "Unrecognized City" the last option
         if 'Unrecognized City' in cities:
             cities.remove('Unrecognized City')
             cities.append('Unrecognized City')
@@ -97,7 +102,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
             zillow_data = zillow_data[zillow_data['City'].isin(slctd_city)]
 
     # ZIP Filter Layout
-    zip_col1, zip_col2 =st.columns([.15, .85])
+    zip_col1, zip_col2 =st.columns([.25, .75])
     
     # ZIP Filter Toggle
     with zip_col1:
@@ -108,30 +113,23 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
         zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(zillow_data.index), sorted(zillow_data.index)[0])
         zillow_data = zillow_data.loc[zip_slctr]
 
+# Create historic dataframe and interpolate missing data
+historic_data = zillow_data.iloc[:,4:].transpose()
+historic_data=historic_data.interpolate()
+
 # Line Chart
 st.subheader('Value History')
-historic_data = zillow_data.iloc[:,6:].transpose()
 st.line_chart(historic_data)
+historic_data=historic_data.T
+
+# Transfer interpolated data to Zillow dataframe
+zillow_data=zillow_data.iloc[:, 0:4].merge(historic_data, 'left', left_index=True, right_index=True)
 
 # Select Value Date
 st.subheader('Select a Value Date')
 date_fltr = st.select_slider('Select Date (YYYY-MM-DD)', val_dates, val_dates[-1])
 date_idx = zillow_data.columns.tolist().index(date_fltr)
 dsply_date = dt.strftime(dt.strptime(date_fltr,'%Y-%m-%d'),'%B, %Y')
-
-# Get Highest ZIP Value
-hi_zip = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].max()].index.tolist()[0]
-hi_zip_val = zillow_data[date_fltr].max()
-
-# Get Lowest ZIP Value
-lo_zip = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].min()].index.tolist()[0]
-lo_zip_val = zillow_data[date_fltr].min()
-
-# Get Median ZIP Value
-med_zip_idx = abs(zillow_data[date_fltr] - zillow_data[date_fltr].median()).argmin()
-med_zip = zillow_data.loc[zillow_data[date_fltr] == zillow_data.iloc[med_zip_idx, date_idx]].index.tolist()[0]
-med_val = zillow_data[date_fltr].median()
-med_zip_val = zillow_data.iloc[med_zip_idx, date_idx]
 
 # Create Map Dataframe
 map_data = pd.DataFrame(index=zillow_data.index)
@@ -151,44 +149,43 @@ cols = map_geos.columns.tolist()
 cols = cols[:3] + cols[-2:] + cols[-3:-2]
 map_geos = map_geos[cols]
 
-# Column Layer
-column_layer = pdk.Layer(
-            'ColumnLayer',
-            data=map_geos,
-            get_position='[Longitude, Latitude]',
-            radius=500,
-            elevation_scale=25,
-            pickable=True,
-            extruded=True,
-            get_elevation = 'Value_k',
-            get_fill_color = '[255, G_Value, 0, A_Value]',
-            )
-
-# GeoJson Layer
-geojson_layer = pdk.Layer(
-            'GeoJsonLayer',
-            data=map_geos,
-            opacity=0.5,
-            stroked=False,
-            filled=True,
-            pickable=True,
-            get_fill_color='[255, G_Value, 0, A_Value]',
-            )
-
-map_layers=[]
-custm_col1, custm_col2, custm_col3 = st.columns([.7, .15, .15])
+# Map Header Layout
+custm_col1, custm_col2 = st.columns([.8, .2])
 
 # Customize the Map
 with custm_col1:
     st.subheader(f'Your Heat Map of {dsply_date}')
 
 with custm_col2:
-    if st.toggle('Show Columns', True):
-        map_layers.append(column_layer)
+    map_toggle = st.toggle('3D Map')
 
-with custm_col3:
-    if st.toggle('Highlight ZIPs'):
-        map_layers.append(geojson_layer)
+# Use 3D Heat Map
+if map_toggle:
+    geojson_layer_3d = pdk.Layer(
+                'GeoJsonLayer',
+                data=map_geos,
+                stroked=False,
+                pickable=True,
+                extruded=True,
+                elevation_scale=25,
+                get_elevation = 'Value_k',
+                get_fill_color='[255, G_Value, 0, A_Value]',
+                )
+    pitch = 50
+    map_layer = geojson_layer_3d
+
+# Use "2D" Heat Map
+else:
+    geojson_layer_2d = pdk.Layer(
+                'GeoJsonLayer',
+                data=map_geos,
+                opacity=0.7,
+                stroked=False,
+                pickable=True,
+                get_fill_color='[255, G_Value, 0, A_Value]',
+                )
+    pitch = 0
+    map_layer = geojson_layer_2d
 
 # Display 3D Heat Map
 st.pydeck_chart(pdk.Deck(
@@ -196,24 +193,58 @@ st.pydeck_chart(pdk.Deck(
         initial_view_state=pdk.ViewState(
             latitude=map_geos['Latitude'].median(),
             longitude=map_geos['Longitude'].median(),
-            zoom=8,
-            pitch=60,
+            zoom=7.75,
+            pitch=pitch,
         ),
-        layers=map_layers
+        layers=map_layer
     ))
 
 # Show Highlight ZIP Values
-st.write(f"<h3 style=text-align:center>Your Highlight ZIP Codes of {dsply_date}</h3>", unsafe_allow_html=True)
+st.write(f"<h2 style=text-align:center>Your Highlight ZIP Codes of {dsply_date}</h2>", unsafe_allow_html=True)
+val_count = map_data['Value_k'].count()
 
+# Highlight ZIP Layout
 hl_zips1, hl_zips2, hl_zips3 = st.columns(3)
 with hl_zips1:
     st.subheader('Lowest Valued ZIP')
-    st.write(f"{lo_zip} {zillow_data.loc[lo_zip, 'City']}, {slctd_state}\n\nValue: ${lo_zip_val:,.0f}")
+    
+    if val_count > 0:
+        # Get Lowest ZIP Value
+        lo_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].min()].index.tolist()
+        
+        # Display Lowest ZIP Value
+        lo_zip = lo_zip_list[0]
+        lo_zip_val = zillow_data[date_fltr].min()
+        st.write(f"{lo_zip} {zillow_data.loc[lo_zip, 'City']}, {slctd_state}\n\nValue: ${lo_zip_val:,.0f}")
+    else:
+        'No Value Data'
 
 with hl_zips2:
     st.subheader('Median Valued ZIP')
-    st.write(f"{med_zip} {zillow_data.loc[med_zip, 'City']}, {slctd_state}\n\nValue: ${med_zip_val:,.0f}")
+
+    if val_count > 0:
+        # Get Median ZIP Value
+        med_zip_idx = abs(zillow_data[date_fltr] - zillow_data[date_fltr].median()).argmin()
+        med_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data.iloc[med_zip_idx, date_idx]].index.tolist()
+        
+        # Display Median ZIP Value
+        med_zip = med_zip_list[0]
+        med_val = zillow_data[date_fltr].median()
+        med_zip_val = zillow_data.iloc[med_zip_idx, date_idx]
+        st.write(f"{med_zip} {zillow_data.loc[med_zip, 'City']}, {slctd_state}\n\nValue: ${med_zip_val:,.0f}")
+    else:
+        'No Value Data'
 
 with hl_zips3:
     st.subheader('Higest Valued ZIP')
-    st.write(f"{hi_zip} {zillow_data.loc[hi_zip, 'City']}, {slctd_state}\n\nValue: ${hi_zip_val:,.0f}")
+
+    if val_count > 0:
+        # Get Highest ZIP Value
+        hi_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].max()].index.tolist()
+        
+        # Display Highest ZIP Value
+        hi_zip = hi_zip_list[0]
+        hi_zip_val = zillow_data[date_fltr].max()
+        st.write(f"{hi_zip} {zillow_data.loc[hi_zip, 'City']}, {slctd_state}\n\nValue: ${hi_zip_val:,.0f}")
+    else:
+        'No Value Data'

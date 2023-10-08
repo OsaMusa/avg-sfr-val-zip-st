@@ -10,6 +10,9 @@ GEOMETRY_DIR = 'geometries/'
 
 st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
 
+if 'zip_state' not in st.session_state:
+    st.session_state['zip_state'] = 'Alaska'
+
 
 @st.cache_data(show_spinner='Loading Avg SFR Value Data...')
 def load_data():
@@ -35,14 +38,32 @@ def load_data():
     return zillow_raw_df
 
 
-@st.cache_data(show_spinner='Loading State ZIP Map...')
+def update_state():
+    state_dict = {
+        'AL':'Alabama', 'AK':'Alaska', 'AZ':'Arizona', 'AR':'Arkansas', 'CA':'California',
+        'CO':'Colorado', 'CT':'Connecticut', 'DE':'Delaware', 'DC':'District of Columbia',
+        'FL':'Florida', 'GA':'Georgia', 'HI':'Hawaii', 'ID':'Idaho', 'IL':'Illinois',
+        'IN':'Indiana', 'IA':'Iowa', 'KS':'Kansas', 'KY':'Kentucky', 'LA':'Louisiana',
+        'ME':'Maine', 'MD':'Maryland', 'MA':'Massachusetts', 'MI':'Michigan', 'MN':'Minnesota',
+        'MS':'Mississippi', 'MO':'Missouri', 'MT':'Montana', 'NE':'Nebraska', 'NV':'Nevada',
+        'NH':'New Hampshire', 'NJ':'New Jersey', 'NM':'New Mexico', 'NY':'New York',
+        'NC':'North Carolina', 'ND':'North Dakota', 'OH':'Ohio', 'OK':'Oklahoma', 'OR':'Oregon',
+        'PA':'Pennsylvania', 'RI':'Rhode Island', 'SC':'South Carolina', 'SD':'South Dakota',
+        'TN':'Tennessee', 'TX':'Texas', 'UT':'Utah', 'VT':'Vermont', 'VA':'Virginia',
+        'WA':'Washington', 'WV':'West Virginia', 'WI':'Wisconsin', 'WY':'Wyoming'
+    }
+    
+    st.session_state['zip_state'] = state_dict[st.session_state['chosen_state']]
+
+
+@st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...')
 def load_geometries(state:str):
     for file in listdir(GEOMETRY_DIR):
         state = state.lower()
 
         if file[0:2] == state:
             return gpd.GeoDataFrame.from_file(GEOMETRY_DIR + file)
-        
+
 
 # Load Data
 zillow_data = load_data()
@@ -61,7 +82,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     # State Filter
     with r1col1:
         states = sorted(zillow_data['State'].unique())
-        slctd_state = st.selectbox('Choose a State', states, 0)
+        slctd_state = st.selectbox('Choose a State', states, 0, key='chosen_state', on_change=update_state)
         zillow_data = zillow_data[zillow_data['State'] == slctd_state]
 
         # Load ZIP Geometries for the State

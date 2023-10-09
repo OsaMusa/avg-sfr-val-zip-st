@@ -3,10 +3,11 @@ import pandas as pd
 import geopandas as gpd
 import streamlit as st
 import pydeck as pdk
+from pathlib import Path
 from os import listdir
 from datetime import datetime as dt
 
-GEOMETRY_DIR = 'geometries/'
+GEOMETRY_DIR = Path('geometries/')
 
 st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
 
@@ -68,7 +69,7 @@ def load_geometries(state:str):
         state = state.lower()
 
         if file[0:2] == state:
-            return gpd.GeoDataFrame.from_file(GEOMETRY_DIR + file)
+            return gpd.GeoDataFrame.from_file(GEOMETRY_DIR / file)
 
 
 def get_city_opts():

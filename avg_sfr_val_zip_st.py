@@ -13,6 +13,12 @@ st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":
 if 'zip_state' not in st.session_state:
     st.session_state['zip_state'] = 'Alaska'
 
+if 'city_opts' not in st.session_state:
+    st.session_state['city_opts'] = []
+
+if 'default_cities' not in st.session_state:
+    st.session_state['default_cities'] = []
+
 
 @st.cache_data(show_spinner='Loading Avg SFR Value Data...')
 def load_data():
@@ -65,8 +71,27 @@ def load_geometries(state:str):
             return gpd.GeoDataFrame.from_file(GEOMETRY_DIR + file)
 
 
+def get_city_opts():
+    df = st.session_state['df']
+
+    df = df[df['State'] == slctd_state]
+
+    st.session_state['default_cities']=[]
+
+    if len(st.session_state['chosen_counties']) > 0:
+        df = df[df['County'].isin(st.session_state['chosen_counties'])]
+
+        df.loc[:, 'City'] = df.loc[:, 'City'].fillna('Unrecognized City')
+        cities = sorted(df['City'].unique())
+
+        for city in st.session_state['chosen_cities']:
+            if city in cities:
+                st.session_state['default_cities'].append(city)
+        
+
 # Load Data
 zillow_data = load_data()
+st.session_state['df']=zillow_data
 val_dates = sorted(zillow_data.columns[4:])
 
 # Page Header
@@ -104,7 +129,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     # County Filter
     with r2col1:
         counties = sorted(zillow_data['County'].unique())
-        slctd_county = st.multiselect('Choose a County', counties, counties[0])
+        slctd_county = st.multiselect('Choose a County', counties, counties[0], key='chosen_counties', on_change=get_city_opts)
         if len(slctd_county) > 0:
             zillow_data = zillow_data[zillow_data['County'].isin(slctd_county)]
 
@@ -118,7 +143,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
             cities.remove('Unrecognized City')
             cities.append('Unrecognized City')
 
-        slctd_city = st.multiselect('Choose a City', cities, None)
+        slctd_city = st.multiselect('Choose a City', cities, st.session_state['default_cities'], key='chosen_cities')
         if len(slctd_city) > 0:
             zillow_data = zillow_data[zillow_data['City'].isin(slctd_city)]
 

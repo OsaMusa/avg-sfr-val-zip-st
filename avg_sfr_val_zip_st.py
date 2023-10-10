@@ -7,7 +7,7 @@ from pathlib import Path
 from os import listdir
 from datetime import datetime as dt
 
-GEOMETRY_DIR = Path('geometries/')
+GEOMETRY_DIR = Path('geometries')
 
 st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
 
@@ -24,7 +24,7 @@ if 'default_cities' not in st.session_state:
 @st.cache_data(show_spinner='Loading Avg SFR Value Data...')
 def load_data():
     # Checking Zillow File
-    zillow_raw_df = pd.read_csv("zhvi-sfr-zip/Zillow SFR Avg Values by ZIP (Aug 2023).csv", dtype={'RegionID':'str', 'RegionName':'str'})
+    zillow_raw_df = pd.read_feather("zhvi-sfr-zip/zhvi.feather")
     zillow_raw_df = zillow_raw_df.rename(columns={'RegionName':'ZIP', 'CountyName':'County'}).drop(columns=['RegionID', 'SizeRank', 'RegionType','StateName'])
 
     # Add Lat/Long
@@ -69,7 +69,7 @@ def load_geometries(state:str):
         state = state.lower()
 
         if file[0:2] == state:
-            return gpd.GeoDataFrame.from_file(GEOMETRY_DIR / file)
+            return gpd.read_feather(GEOMETRY_DIR / file)
 
 
 def get_city_opts():

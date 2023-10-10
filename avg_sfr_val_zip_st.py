@@ -62,6 +62,8 @@ def update_state():
     
     st.session_state['zip_state'] = state_dict[st.session_state['chosen_state']]
 
+    clear_cities()
+
 
 @st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...')
 def load_geometries(state:str):
@@ -88,7 +90,11 @@ def get_city_opts():
         for city in st.session_state['chosen_cities']:
             if city in cities:
                 st.session_state['default_cities'].append(city)
-        
+
+
+def clear_cities():
+    st.session_state['default_cities']=[]
+
 
 # Load Data
 zillow_data = load_data()
@@ -124,7 +130,7 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
             metros.remove('Unrecognized Metroplex')
             metros.append('Unrecognized Metroplex')
         
-        slctd_metro = st.selectbox('Choose a Metroplex', metros, 0)
+        slctd_metro = st.selectbox('Choose a Metroplex', metros, 0, on_change=clear_cities)
         zillow_data = zillow_data[zillow_data['Metro'] == slctd_metro]
 
     # County Filter

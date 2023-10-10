@@ -1,1 +1,0 @@
-zhvi-sfr-zip/Zillow[[:space:]]SFR[[:space:]]Avg[[:space:]]Values[[:space:]]by[[:space:]]ZIP*.csv filter=lfs diff=lfs merge=lfs -text

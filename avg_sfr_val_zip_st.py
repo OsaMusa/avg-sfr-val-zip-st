@@ -7,6 +7,7 @@ from pathlib import Path
 from os import listdir
 from datetime import datetime as dt
 
+DATA_FILE = Path('zhvi-sfr-zip/zhvi.feather')
 GEOMETRY_DIR = Path('geometries')
 
 st.set_page_config(page_title="Avg SFR Vals by ZIP", layout="wide", page_icon=":house:")
@@ -24,7 +25,7 @@ if 'default_cities' not in st.session_state:
 @st.cache_data(show_spinner='Loading Avg SFR Value Data...')
 def load_data():
     # Checking Zillow File
-    zillow_raw_df = pd.read_feather("zhvi-sfr-zip/zhvi.feather")
+    zillow_raw_df = pd.read_feather(DATA_FILE)
     zillow_raw_df = zillow_raw_df.rename(columns={'RegionName':'ZIP', 'CountyName':'County'}).drop(columns=['RegionID', 'SizeRank', 'RegionType','StateName'])
 
     # Add Lat/Long

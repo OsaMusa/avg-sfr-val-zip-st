@@ -41,6 +41,11 @@ def load_data():
     zillow_raw_df.index = zillow_raw_df['ZIP']
     zillow_raw_df = zillow_raw_df.drop(columns='ZIP')
     
+    # Interpolate Gap Months
+    date_df = zillow_raw_df.iloc[:,4:].interpolate(axis=1)
+    zillow_raw_df = zillow_raw_df.iloc[:, :4].merge(date_df, 'left', left_index=True, right_index=True)
+    
+    # Round Values to Nearest Dollar
     zillow_raw_df.iloc[:, 4:] = zillow_raw_df.iloc[:, 4:].round(0)
     
     return zillow_raw_df
@@ -167,17 +172,12 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
         zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(zillow_data.index), sorted(zillow_data.index)[0])
         zillow_data = zillow_data.loc[zip_slctr]
 
-# Create historic dataframe and interpolate missing data
+# Create historic dataframe
 historic_data = zillow_data.iloc[:,4:].transpose()
-historic_data=historic_data.interpolate()
 
 # Line Chart
 st.subheader('Value History')
 st.line_chart(historic_data)
-historic_data=historic_data.T
-
-# Transfer interpolated data to Zillow dataframe
-zillow_data=zillow_data.iloc[:, 0:4].merge(historic_data, 'left', left_index=True, right_index=True)
 
 # Select Value Date
 st.subheader('Select a Value Date')

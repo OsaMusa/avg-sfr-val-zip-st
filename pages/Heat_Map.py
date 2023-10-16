@@ -40,7 +40,7 @@ if 'date_slider' not in st.session_state:
     st.session_state['date_slider'] = None
 
 
-@st.cache_data(show_spinner='Loading Avg SFR Value Data...')
+@st.cache_data(show_spinner='Loading Avg SFR Value Data...', ttl='12h')
 def load_data():
     # Checking Zillow File
     zillow_raw_df = pd.read_feather(DATA_FILE)
@@ -216,7 +216,7 @@ def update_chosen_date():
     st.session_state['date_slider'] = st.session_state['chosen_date']
 
 
-@st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...')
+@st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...', ttl='12h', max_entries=5)
 def load_geometries(state:str):
     for file in listdir(GEOMETRY_DIR):
         state = state.lower()

@@ -251,7 +251,6 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
         
     # Metroplex Filter
     with r1col2:
-        zillow_data.loc[:, 'Metro'] = zillow_data.loc[:, 'Metro'].fillna('Unrecognized Metroplex')
         metros = sorted(zillow_data['Metro'].unique())
         
         # Make "Unrecognized Metroplex" the last option
@@ -271,14 +270,8 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
 
     # City Filter
     with r2col2:
-        zillow_data.loc[:, 'City'] = zillow_data.loc[:, 'City'].fillna('Unrecognized City')
         cities = sorted(zillow_data['City'].unique())
         
-        # Make "Unrecognized City" the last option
-        if 'Unrecognized City' in cities:
-            cities.remove('Unrecognized City')
-            cities.append('Unrecognized City')
-
         slctd_city = st.multiselect('Choose a City', cities, st.session_state['default_cities'], key='chosen_cities', on_change=update_cities)
         if len(slctd_city) > 0:
             zillow_data = zillow_data[zillow_data['City'].isin(slctd_city)]

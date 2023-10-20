@@ -7,8 +7,8 @@ from pathlib import Path
 from os import listdir
 from datetime import datetime as dt
 
-DATA_FILE = Path('../zhvi-sfr-zip/zhvi.feather')
-GEOMETRY_DIR = Path('../geometries')
+DATA_FILE = Path('zhvi-sfr-zip/zhvi.feather')
+GEOMETRY_DIR = Path('geometries')
 
 st.set_page_config(page_title="Avg SFR Values Heat Map", layout='wide', page_icon=':house:', initial_sidebar_state='collapsed')
 

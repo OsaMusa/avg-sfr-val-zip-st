@@ -40,7 +40,7 @@ if 'date_slider' not in st.session_state:
     st.session_state['date_slider'] = None
 
 
-@st.cache_data(show_spinner='Loading Avg SFR Value Data...', ttl='12h')
+# @st.cache_data(show_spinner='Loading Avg SFR Value Data...', ttl='12h')
 def load_data():
     # Checking Zillow File
     zillow_raw_df = pd.read_feather(DATA_FILE)
@@ -121,7 +121,7 @@ def update_metro():
     
     df = df.loc[df['County'] == counties[0]]
     
-    st.session_state['default_metro'] = metros.index(chosen_metro)
+    st.session_state['default_metro'] = st.session_state['metro_opts'].index(chosen_metro)
     st.session_state['default_counties'] = counties[0]
     st.session_state['default_cities']=[]
     st.session_state['default_zips'] = sorted(df.index)[0]
@@ -216,7 +216,6 @@ def update_chosen_date():
     st.session_state['date_slider'] = st.session_state['chosen_date']
 
 
-@st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...', ttl='12h', max_entries=5)
 def load_geometries(state:str):
     for file in listdir(GEOMETRY_DIR):
         state = state.lower()
@@ -226,9 +225,9 @@ def load_geometries(state:str):
 
 
 # Load Data
-zillow_data = load_data()
-st.session_state['df'] = zillow_data
-val_dates = sorted(zillow_data.columns[4:])
+if 'df' not in st.session_state:
+    st.session_state['df'] = load_data()
+    st.session_state['val_dates'] = sorted(st.session_state['df'].columns[4:])
 
 # Page Header
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
@@ -242,72 +241,72 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
 
     # State Filter
     with r1col1:
-        states = sorted(zillow_data['State'].unique())
-        slctd_state = st.selectbox('Choose a State', states, st.session_state['default_state'], key='chosen_state', on_change=update_state)
-        zillow_data = zillow_data[zillow_data['State'] == slctd_state]
+        st.session_state['state_opts'] = sorted(st.session_state['df']['State'].unique())
+        slctd_state = st.selectbox('Choose a State', st.session_state['state_opts'], st.session_state['default_state'], key='chosen_state', on_change=update_state)
+        st.session_state['filtered_df'] = st.session_state['df'][st.session_state['df']['State'] == slctd_state]
 
         # Load ZIP Geometries for the State
-        zip_geos = load_geometries(slctd_state)
+        st.session_state['zip_geos'] = load_geometries(slctd_state)
         
     # Metroplex Filter
     with r1col2:
-        metros = sorted(zillow_data['Metro'].unique())
+        st.session_state['metro_opts'] = sorted(st.session_state['filtered_df']['Metro'].unique())
         
         # Make "Unrecognized Metroplex" the last option
-        if 'Unrecognized Metroplex' in metros:
-            metros.remove('Unrecognized Metroplex')
-            metros.append('Unrecognized Metroplex')
+        if 'Unrecognized Metroplex' in st.session_state['metro_opts']:
+            st.session_state['metro_opts'].remove('Unrecognized Metroplex')
+            st.session_state['metro_opts'].append('Unrecognized Metroplex')
         
-        slctd_metro = st.selectbox('Choose a Metroplex', metros, st.session_state['default_metro'], key='chosen_metro', on_change=update_metro)
-        zillow_data = zillow_data[zillow_data['Metro'] == slctd_metro]
+        slctd_metro = st.selectbox('Choose a Metroplex', st.session_state['metro_opts'], st.session_state['default_metro'], key='chosen_metro', on_change=update_metro)
+        st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['Metro'] == slctd_metro]
 
     # County Filter
     with r2col1:
-        counties = sorted(zillow_data['County'].unique())
-        slctd_county = st.multiselect('Choose a County', counties, st.session_state['default_counties'], key='chosen_counties', on_change=update_couties)
+        st.session_state['county_opts'] = sorted(st.session_state['filtered_df']['County'].unique())
+        slctd_county = st.multiselect('Choose a County', st.session_state['county_opts'], st.session_state['default_counties'], key='chosen_counties', on_change=update_couties)
         if len(slctd_county) > 0:
-            zillow_data = zillow_data[zillow_data['County'].isin(slctd_county)]
+            st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['County'].isin(slctd_county)]
 
     # City Filter
     with r2col2:
-        cities = sorted(zillow_data['City'].unique())
+        st.session_state['city_opts'] = sorted(st.session_state['filtered_df']['City'].unique())
         
-        slctd_city = st.multiselect('Choose a City', cities, st.session_state['default_cities'], key='chosen_cities', on_change=update_cities)
+        slctd_city = st.multiselect('Choose a City', st.session_state['city_opts'], st.session_state['default_cities'], key='chosen_cities', on_change=update_cities)
         if len(slctd_city) > 0:
-            zillow_data = zillow_data[zillow_data['City'].isin(slctd_city)]
+            st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['City'].isin(slctd_city)]
 
     # ZIP Filter Layout
     zip_col1, zip_col2 =st.columns([.25, .75])
-
+    
     # ZIP Filter Toggle
     with zip_col1:
         zip_fltr = st.toggle('Choose ZIPs', key='zip_toggle', value=st.session_state['zip_toggle_pos'], on_change=update_zip_toggle)
 
     # ZIP Filter
     if zip_fltr:
-        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(zillow_data.index), st.session_state['default_zips'], key='chosen_zips')
-        zillow_data = zillow_data.loc[zip_slctr]
+        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips')
+        st.session_state['filtered_df'] = st.session_state['filtered_df'].loc[zip_slctr]
 
 # Select Value Date
 st.subheader('Select a Value Date')
 
 if st.session_state['date_slider'] != None:
-    date_fltr = st.select_slider('Select Date (YYYY-MM-DD)', val_dates, st.session_state['date_slider'], key='chosen_date', on_change=update_chosen_date)
+    date_fltr = st.select_slider('Select Date (YYYY-MM-DD)', st.session_state['val_dates'], st.session_state['date_slider'], key='chosen_date', on_change=update_chosen_date)
 else:
-    date_fltr = st.select_slider('Select Date (YYYY-MM-DD)', val_dates, val_dates[-1], key='chosen_date', on_change=update_chosen_date)
+    date_fltr = st.select_slider('Select Date (YYYY-MM-DD)', st.session_state['val_dates'], st.session_state['val_dates'][-1], key='chosen_date', on_change=update_chosen_date)
 
-date_idx = zillow_data.columns.tolist().index(date_fltr)
+date_idx = st.session_state['filtered_df'].columns.tolist().index(date_fltr)
 dsply_date = dt.strftime(dt.strptime(date_fltr,'%Y-%m-%d'),'%B, %Y')
 
 # Create Map Dataframe
-map_data = pd.DataFrame(index=zillow_data.index)
-map_data['Value_k'] = zillow_data[date_fltr]/1000
+map_data = pd.DataFrame(index=st.session_state['filtered_df'].index)
+map_data['Value_k'] = st.session_state['filtered_df'][date_fltr]/1000
 map_data['G_Value'] = 1000 * (255 / map_data['Value_k'] / 4)
 map_data['A_Value'] = 255
 map_data.loc[map_data['Value_k'].isna(), 'A_Value'] = 0
 
 # Merge Map Dataframe with Geometry Dataframe
-map_geos = map_data.merge(zip_geos, 'left', left_index=True, right_on='ZCTA5CE10')
+map_geos = map_data.merge(st.session_state['zip_geos'], 'left', left_index=True, right_on='ZCTA5CE10')
 map_geos.index = map_geos['ZCTA5CE10']
 map_geos['Latitude'] = pd.to_numeric(map_geos['INTPTLAT10'])
 map_geos['Longitude'] = pd.to_numeric(map_geos['INTPTLON10'])
@@ -355,7 +354,7 @@ else:
     pitch = 0
     map_layer = geojson_layer_2d
 
-# Display 3D Heat Map
+# Display Heat Map
 st.pydeck_chart(pdk.Deck(
         map_style=None,
         initial_view_state=pdk.ViewState(
@@ -378,12 +377,12 @@ with hl_zips1:
     
     if val_count > 0:
         # Get Lowest ZIP Value
-        lo_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].min()].index.tolist()
+        lo_zip_list = st.session_state['filtered_df'].loc[st.session_state['filtered_df'][date_fltr] == st.session_state['filtered_df'][date_fltr].min()].index.tolist()
         
         # Display Lowest ZIP Value
         lo_zip = lo_zip_list[0]
-        lo_zip_val = zillow_data[date_fltr].min()
-        st.write(f"{lo_zip} {zillow_data.loc[lo_zip, 'City']}, {slctd_state}\n\nValue: ${lo_zip_val:,.0f}")
+        lo_zip_val = st.session_state['filtered_df'][date_fltr].min()
+        st.write(f"{lo_zip} {st.session_state['filtered_df'].loc[lo_zip, 'City']}, {slctd_state}\n\nValue: ${lo_zip_val:,.0f}")
     else:
         'No Value Data'
 
@@ -392,14 +391,14 @@ with hl_zips2:
 
     if val_count > 0:
         # Get Median ZIP Value
-        med_zip_idx = abs(zillow_data[date_fltr] - zillow_data[date_fltr].median()).argmin()
-        med_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data.iloc[med_zip_idx, date_idx]].index.tolist()
+        med_zip_idx = abs(st.session_state['filtered_df'][date_fltr] - st.session_state['filtered_df'][date_fltr].median()).argmin()
+        med_zip_list = st.session_state['filtered_df'].loc[st.session_state['filtered_df'][date_fltr] == st.session_state['filtered_df'].iloc[med_zip_idx, date_idx]].index.tolist()
         
         # Display Median ZIP Value
         med_zip = med_zip_list[0]
-        med_val = zillow_data[date_fltr].median()
-        med_zip_val = zillow_data.iloc[med_zip_idx, date_idx]
-        st.write(f"{med_zip} {zillow_data.loc[med_zip, 'City']}, {slctd_state}\n\nValue: ${med_zip_val:,.0f}")
+        med_val = st.session_state['filtered_df'][date_fltr].median()
+        med_zip_val = st.session_state['filtered_df'].iloc[med_zip_idx, date_idx]
+        st.write(f"{med_zip} {st.session_state['filtered_df'].loc[med_zip, 'City']}, {slctd_state}\n\nValue: ${med_zip_val:,.0f}")
     else:
         'No Value Data'
 
@@ -408,11 +407,11 @@ with hl_zips3:
 
     if val_count > 0:
         # Get Highest ZIP Value
-        hi_zip_list = zillow_data.loc[zillow_data[date_fltr] == zillow_data[date_fltr].max()].index.tolist()
+        hi_zip_list = st.session_state['filtered_df'].loc[st.session_state['filtered_df'][date_fltr] == st.session_state['filtered_df'][date_fltr].max()].index.tolist()
         
         # Display Highest ZIP Value
         hi_zip = hi_zip_list[0]
-        hi_zip_val = zillow_data[date_fltr].max()
-        st.write(f"{hi_zip} {zillow_data.loc[hi_zip, 'City']}, {slctd_state}\n\nValue: ${hi_zip_val:,.0f}")
+        hi_zip_val = st.session_state['filtered_df'][date_fltr].max()
+        st.write(f"{hi_zip} {st.session_state['filtered_df'].loc[hi_zip, 'City']}, {slctd_state}\n\nValue: ${hi_zip_val:,.0f}")
     else:
         'No Value Data'

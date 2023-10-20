@@ -113,7 +113,7 @@ def update_metro():
     
     df = df.loc[df['County'] == counties[0]]
     
-    st.session_state['default_metro'] = metros.index(chosen_metro)
+    st.session_state['default_metro'] = st.session_state['metro_opts'].index(chosen_metro)
     st.session_state['default_counties'] = counties[0]
     st.session_state['default_cities']=[]
     st.session_state['default_zips'] = sorted(df.index)[0]
@@ -200,7 +200,6 @@ def update_zip_toggle():
     st.session_state['zip_toggle_pos'] = st.session_state['zip_toggle']
 
 
-@st.cache_data(show_spinner=f'Loading {st.session_state.zip_state} ZIP Code Map...', ttl='12h', max_entries=5)
 def load_geometries(state:str):
     for file in listdir(GEOMETRY_DIR):
         state = state.lower()
@@ -210,9 +209,9 @@ def load_geometries(state:str):
 
 
 # Load Data
-zillow_data = load_data()
-st.session_state['df'] = zillow_data
-val_dates = sorted(zillow_data.columns[4:])
+if 'df' not in st.session_state:
+    st.session_state['df'] = load_data()
+    st.session_state['val_dates'] = sorted(st.session_state['df'].columns[4:])
 
 # Page Header
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
@@ -226,39 +225,38 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
 
     # State Filter
     with r1col1:
-        states = sorted(zillow_data['State'].unique())
-        slctd_state = st.selectbox('Choose a State', states, st.session_state['default_state'], key='chosen_state', on_change=update_state)
-        zillow_data = zillow_data[zillow_data['State'] == slctd_state]
-
-        # Load ZIP Geometries for the State
-        zip_geos = load_geometries(slctd_state)
+        st.session_state['state_opts'] = sorted(st.session_state['df']['State'].unique())
+        slctd_state = st.selectbox('Choose a State', st.session_state['state_opts'], st.session_state['default_state'], key='chosen_state', on_change=update_state)
+        st.session_state['filtered_df'] = st.session_state['df'][st.session_state['df']['State'] == slctd_state]
         
+        # Load ZIP Geometries for the State
+        st.session_state['zip_geos'] = load_geometries(slctd_state)
     # Metroplex Filter
     with r1col2:
-        metros = sorted(zillow_data['Metro'].unique())
+        st.session_state['metro_opts'] = sorted(st.session_state['filtered_df']['Metro'].unique())
         
         # Make "Unrecognized Metroplex" the last option
-        if 'Unrecognized Metroplex' in metros:
-            metros.remove('Unrecognized Metroplex')
-            metros.append('Unrecognized Metroplex')
+        if 'Unrecognized Metroplex' in st.session_state['metro_opts']:
+            st.session_state['metro_opts'].remove('Unrecognized Metroplex')
+            st.session_state['metro_opts'].append('Unrecognized Metroplex')
         
-        slctd_metro = st.selectbox('Choose a Metroplex', metros, st.session_state['default_metro'], key='chosen_metro', on_change=update_metro)
-        zillow_data = zillow_data[zillow_data['Metro'] == slctd_metro]
+        slctd_metro = st.selectbox('Choose a Metroplex', st.session_state['metro_opts'], st.session_state['default_metro'], key='chosen_metro', on_change=update_metro)
+        st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['Metro'] == slctd_metro]
 
     # County Filter
     with r2col1:
-        counties = sorted(zillow_data['County'].unique())
-        slctd_county = st.multiselect('Choose a County', counties, st.session_state['default_counties'], key='chosen_counties', on_change=update_couties)
+        st.session_state['county_opts'] = sorted(st.session_state['filtered_df']['County'].unique())
+        slctd_county = st.multiselect('Choose a County', st.session_state['county_opts'], st.session_state['default_counties'], key='chosen_counties', on_change=update_couties)
         if len(slctd_county) > 0:
-            zillow_data = zillow_data[zillow_data['County'].isin(slctd_county)]
+            st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['County'].isin(slctd_county)]
 
     # City Filter
     with r2col2:
-        cities = sorted(zillow_data['City'].unique())
+        st.session_state['city_opts'] = sorted(st.session_state['filtered_df']['City'].unique())
         
-        slctd_city = st.multiselect('Choose a City', cities, st.session_state['default_cities'], key='chosen_cities', on_change=update_cities)
+        slctd_city = st.multiselect('Choose a City', st.session_state['city_opts'], st.session_state['default_cities'], key='chosen_cities', on_change=update_cities)
         if len(slctd_city) > 0:
-            zillow_data = zillow_data[zillow_data['City'].isin(slctd_city)]
+            st.session_state['filtered_df'] = st.session_state['filtered_df'][st.session_state['filtered_df']['City'].isin(slctd_city)]
 
     # ZIP Filter Layout
     zip_col1, zip_col2 =st.columns([.25, .75])
@@ -269,12 +267,12 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
 
     # ZIP Filter
     if zip_fltr:
-        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(zillow_data.index), st.session_state['default_zips'], key='chosen_zips')
-        zillow_data = zillow_data.loc[zip_slctr]
+        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips')
+        st.session_state['filtered_df'] = st.session_state['filtered_df'].loc[zip_slctr]
 
 # Create historic dataframe
-historic_data = zillow_data.iloc[:,4:].transpose()
+st.session_state['historic_data'] = st.session_state['filtered_df'].iloc[:,4:].transpose()
 
 # Line Chart
 st.subheader('Value History')
-st.line_chart(historic_data)
+st.line_chart(st.session_state['historic_data'])

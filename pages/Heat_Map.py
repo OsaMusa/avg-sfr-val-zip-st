@@ -36,6 +36,9 @@ if 'zip_toggle_pos' not in st.session_state:
 if 'map_toggle_pos' not in st.session_state:
     st.session_state['map_toggle_pos'] = False
 
+if 'map_list_view' not in st.session_state:
+    st.session_state['map_list_view'] = False
+
 if 'date_slider' not in st.session_state:
     st.session_state['date_slider'] = None
 
@@ -107,8 +110,14 @@ def update_state():
     st.session_state['default_state'] = list(state_dict.values()).index(st.session_state['zip_state'])
     st.session_state['default_metro'] = 0
     st.session_state['default_counties'] = sorted(df['County'].unique())[0]
-    st.session_state['default_cities']=[]    
+    st.session_state['default_cities'] = []    
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    state_dict = None
+    chosen_state = None
+    counties = None
+    metro_opts = None
 
 
 def update_metro():
@@ -123,8 +132,13 @@ def update_metro():
     
     st.session_state['default_metro'] = st.session_state['metro_opts'].index(chosen_metro)
     st.session_state['default_counties'] = counties[0]
-    st.session_state['default_cities']=[]
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    counties = None
 
 
 def update_couties():
@@ -139,8 +153,8 @@ def update_couties():
         chosen_zips = []
     
     # Re-Initialize Default Counties/Cities
-    st.session_state['default_counties']=[]
-    st.session_state['default_cities']=[]
+    st.session_state['default_counties'] = []
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = []
     
     df = st.session_state['df']
@@ -170,6 +184,15 @@ def update_couties():
 
     if len(st.session_state['default_zips']) == 0:
         st.session_state['default_zips'] = zip_codes[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    cities = None
+    zip_codes = None
 
 
 def update_cities():
@@ -203,6 +226,14 @@ def update_cities():
     
     st.session_state['default_cities'] = st.session_state['chosen_cities']
 
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    zip_codes = None
+
 
 def update_zip_toggle():
     st.session_state['zip_toggle_pos'] = st.session_state['zip_toggle']
@@ -212,11 +243,15 @@ def update_map_toggle():
     st.session_state['map_toggle_pos'] = st.session_state['map_toggle']
 
 
+def update_map_list():
+    st.session_state['map_list_view'] = st.session_state['map_list']
+
+
 def update_chosen_date():
     st.session_state['date_slider'] = st.session_state['chosen_date']
 
 
-def load_geometries(state:str):
+def load_geometries(state):
     for file in listdir(GEOMETRY_DIR):
         state = state.lower()
 
@@ -299,22 +334,22 @@ date_idx = st.session_state['filtered_df'].columns.tolist().index(date_fltr)
 dsply_date = dt.strftime(dt.strptime(date_fltr,'%Y-%m-%d'),'%B, %Y')
 
 # Create Map Dataframe
-map_data = pd.DataFrame(index=st.session_state['filtered_df'].index)
-map_data['Value_k'] = st.session_state['filtered_df'][date_fltr]/1000
-map_data['G_Value'] = 1000 * (255 / map_data['Value_k'] / 4)
-map_data['A_Value'] = 255
-map_data.loc[map_data['Value_k'].isna(), 'A_Value'] = 0
+st.session_state['map_data'] = pd.DataFrame(index=st.session_state['filtered_df'].index)
+st.session_state['map_data']['Value_k'] = st.session_state['filtered_df'][date_fltr]/1000
+st.session_state['map_data']['G_Value'] = 1000 * (255 / st.session_state['map_data']['Value_k'] / 4)
+st.session_state['map_data']['A_Value'] = 255
+st.session_state['map_data'].loc[st.session_state['map_data']['Value_k'].isna(), 'A_Value'] = 0
 
 # Merge Map Dataframe with Geometry Dataframe
-map_geos = map_data.merge(st.session_state['zip_geos'], 'left', left_index=True, right_on='ZCTA5CE10')
-map_geos.index = map_geos['ZCTA5CE10']
-map_geos['Latitude'] = pd.to_numeric(map_geos['INTPTLAT10'])
-map_geos['Longitude'] = pd.to_numeric(map_geos['INTPTLON10'])
-map_geos = gpd.GeoDataFrame(data=map_geos)
-map_geos = map_geos.drop(columns=map_geos.columns[3:-3].tolist())
-cols = map_geos.columns.tolist()
+st.session_state['map_geos'] = st.session_state['map_data'].merge(st.session_state['zip_geos'], 'left', left_index=True, right_on='ZCTA5CE10')
+st.session_state['map_geos'].index = st.session_state['map_geos']['ZCTA5CE10']
+st.session_state['map_geos']['Latitude'] = pd.to_numeric(st.session_state['map_geos']['INTPTLAT10'])
+st.session_state['map_geos']['Longitude'] = pd.to_numeric(st.session_state['map_geos']['INTPTLON10'])
+st.session_state['map_geos'] = gpd.GeoDataFrame(data=st.session_state['map_geos'])
+st.session_state['map_geos'] = st.session_state['map_geos'].drop(columns=st.session_state['map_geos'].columns[3:-3].tolist())
+cols = st.session_state['map_geos'].columns.tolist()
 cols = cols[:3] + cols[-2:] + cols[-3:-2]
-map_geos = map_geos[cols]
+st.session_state['map_geos'] = st.session_state['map_geos'][cols]
 
 # Map Header Layout
 custm_col1, custm_col2 = st.columns([.8, .2])
@@ -330,7 +365,7 @@ with custm_col2:
 if map_toggle:
     geojson_layer_3d = pdk.Layer(
                 'GeoJsonLayer',
-                data=map_geos,
+                data=st.session_state['map_geos'],
                 stroked=False,
                 pickable=True,
                 extruded=True,
@@ -345,7 +380,7 @@ if map_toggle:
 else:
     geojson_layer_2d = pdk.Layer(
                 'GeoJsonLayer',
-                data=map_geos,
+                data=st.session_state['map_geos'],
                 opacity=0.7,
                 stroked=False,
                 pickable=True,
@@ -358,8 +393,8 @@ else:
 st.pydeck_chart(pdk.Deck(
         map_style=None,
         initial_view_state=pdk.ViewState(
-            latitude=map_geos['Latitude'].median(),
-            longitude=map_geos['Longitude'].median(),
+            latitude=st.session_state['map_geos']['Latitude'].median(),
+            longitude=st.session_state['map_geos']['Longitude'].median(),
             zoom=7.75,
             pitch=pitch,
         ),
@@ -368,7 +403,7 @@ st.pydeck_chart(pdk.Deck(
 
 # Show Highlight ZIP Values
 st.write(f"<h2 style=text-align:center>Your Highlight ZIP Codes of {dsply_date}</h2>", unsafe_allow_html=True)
-val_count = map_data['Value_k'].count()
+val_count = st.session_state['map_data']['Value_k'].count()
 
 # Highlight ZIP Layout
 hl_zips1, hl_zips2, hl_zips3 = st.columns(3)
@@ -415,3 +450,55 @@ with hl_zips3:
         st.write(f"{hi_zip} {st.session_state['filtered_df'].loc[hi_zip, 'City']}, {slctd_state}\n\nValue: ${hi_zip_val:,.0f}")
     else:
         'No Value Data'
+
+# Display  of Map Data Table
+data_col1, data_col2 = st.columns([.3, .7])
+with data_col1:
+    st.subheader('')
+    if st.checkbox('View the Full List', st.session_state['map_list_view'], key='map_list', on_change=update_map_list):
+        st.dataframe(
+            st.session_state['filtered_df'][['City', date_fltr]].sort_values(date_fltr, ascending=False).rename(columns={date_fltr:'Value'}),
+            use_container_width=True,
+        )
+
+# Empty Unused Variables
+r1col1 = None
+r1col2 = None
+r2col1 = None
+r2col2 = None
+slctd_state = None
+slctd_metro = None
+slctd_county = None
+slctd_city = None
+zip_fltr = None
+zip_slctr = None
+zip_col1 = None
+zip_col2 = None
+date_fltr = None
+date_idx = None
+dsply_date = None
+cols = None
+custm_col1 = None
+custm_col2 = None
+map_toggle = None
+geojson_layer_3d = None
+geojson_layer_2d = None
+pitch = None
+map_layer = None
+val_count = None
+hl_zips1 = None
+hl_zips2 = None
+hl_zips3 = None
+lo_zip_list = None
+lo_zip = None
+lo_zip_val = None
+med_zip_idx = None
+med_zip_list = None
+med_zip = None
+med_val = None
+med_zip_val = None
+hi_zip_list = None
+hi_zip = None
+hi_zip_val = None
+data_col1 = None
+data_col2 = None

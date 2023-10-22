@@ -28,6 +28,9 @@ if 'default_cities' not in st.session_state:
 if 'default_zips' not in st.session_state:
     st.session_state['default_zips'] = ['99501']
 
+if 'chart_list_view' not in st.session_state:
+    st.session_state['chart_list_view'] = False
+
 if 'zip_toggle_pos' not in st.session_state:
     st.session_state['zip_toggle_pos'] = False
 
@@ -99,8 +102,14 @@ def update_state():
     st.session_state['default_state'] = list(state_dict.values()).index(st.session_state['zip_state'])
     st.session_state['default_metro'] = 0
     st.session_state['default_counties'] = sorted(df['County'].unique())[0]
-    st.session_state['default_cities']=[]    
+    st.session_state['default_cities'] = []    
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    state_dict = None
+    chosen_state = None
+    counties = None
+    metro_opts = None
 
 
 def update_metro():
@@ -115,8 +124,13 @@ def update_metro():
     
     st.session_state['default_metro'] = st.session_state['metro_opts'].index(chosen_metro)
     st.session_state['default_counties'] = counties[0]
-    st.session_state['default_cities']=[]
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    counties = None
 
 
 def update_couties():
@@ -131,8 +145,8 @@ def update_couties():
         chosen_zips = []
     
     # Re-Initialize Default Counties/Cities
-    st.session_state['default_counties']=[]
-    st.session_state['default_cities']=[]
+    st.session_state['default_counties'] = []
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = []
     
     df = st.session_state['df']
@@ -162,6 +176,15 @@ def update_couties():
 
     if len(st.session_state['default_zips']) == 0:
         st.session_state['default_zips'] = zip_codes[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    cities = None
+    zip_codes = None
 
 
 def update_cities():
@@ -195,9 +218,21 @@ def update_cities():
     
     st.session_state['default_cities'] = st.session_state['chosen_cities']
 
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    zip_codes = None
+
 
 def update_zip_toggle():
     st.session_state['zip_toggle_pos'] = st.session_state['zip_toggle']
+
+
+def update_chart_list():
+    st.session_state['chart_list_view'] = st.session_state['chart_list']
 
 
 def load_geometries(state:str):
@@ -276,3 +311,23 @@ st.session_state['historic_data'] = st.session_state['filtered_df'].iloc[:,4:].t
 # Line Chart
 st.subheader('Value History')
 st.line_chart(st.session_state['historic_data'])
+
+# Display Map Data Table
+if st.checkbox('View the Full List', st.session_state['chart_list_view'], key='chart_list', on_change=update_chart_list):
+    st.dataframe(
+        st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=['Metro', 'County', 'State'])
+    )
+
+# Empty Unused Variables
+r1col1 = None
+r1col2 = None
+r2col1 = None
+r2col2 = None
+slctd_state = None
+slctd_metro = None
+slctd_county = None
+slctd_city = None
+zip_fltr = None
+zip_slctr = None
+zip_col1 = None
+zip_col2 = None

@@ -99,8 +99,14 @@ def update_state():
     st.session_state['default_state'] = list(state_dict.values()).index(st.session_state['zip_state'])
     st.session_state['default_metro'] = 0
     st.session_state['default_counties'] = sorted(df['County'].unique())[0]
-    st.session_state['default_cities']=[]    
+    st.session_state['default_cities'] = []    
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    state_dict = None
+    chosen_state = None
+    counties = None
+    metro_opts = None
 
 
 def update_metro():
@@ -115,8 +121,13 @@ def update_metro():
     
     st.session_state['default_metro'] = st.session_state['metro_opts'].index(chosen_metro)
     st.session_state['default_counties'] = counties[0]
-    st.session_state['default_cities']=[]
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = sorted(df.index)[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    counties = None
 
 
 def update_couties():
@@ -131,8 +142,8 @@ def update_couties():
         chosen_zips = []
     
     # Re-Initialize Default Counties/Cities
-    st.session_state['default_counties']=[]
-    st.session_state['default_cities']=[]
+    st.session_state['default_counties'] = []
+    st.session_state['default_cities'] = []
     st.session_state['default_zips'] = []
     
     df = st.session_state['df']
@@ -162,6 +173,15 @@ def update_couties():
 
     if len(st.session_state['default_zips']) == 0:
         st.session_state['default_zips'] = zip_codes[0]
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    cities = None
+    zip_codes = None
 
 
 def update_cities():
@@ -194,6 +214,14 @@ def update_cities():
         st.session_state['default_zips'] = zip_codes[0]
     
     st.session_state['default_cities'] = st.session_state['chosen_cities']
+
+    df = None
+    chosen_state = None
+    chosen_metro = None
+    chosen_counties = None
+    chosen_cities = None
+    chosen_zips = None
+    zip_codes = None
 
 
 def update_zip_toggle():
@@ -270,3 +298,17 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     if zip_fltr:
         zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips')
         st.session_state['filtered_df'] = st.session_state['filtered_df'].loc[zip_slctr]
+
+# Empty Unused Variables
+r1col1 = None
+r1col2 = None
+r2col1 = None
+r2col2 = None
+slctd_state = None
+slctd_metro = None
+slctd_county = None
+slctd_city = None
+zip_fltr = None
+zip_slctr = None
+zip_col1 = None
+zip_col2 = None

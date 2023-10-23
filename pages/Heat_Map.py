@@ -267,9 +267,10 @@ if 'df' not in st.session_state:
 # Page Header
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
 st.write('<h4 style=text-align:center>by ZIP Code</h4>', unsafe_allow_html=True)
+st.write('<p style=text-align:center>(Data Provided by Zillow Group)</p>', unsafe_allow_html=True)
 
 # Filter Expander
-with st.expander('Filter Your ZIP Lookup', expanded=True):
+with st.expander('Filter Your Area Search', expanded=True):
     # Main Filter Layout
     r1col1, r1col2 = st.columns(2)
     r2col1, r2col2 = st.columns(2)

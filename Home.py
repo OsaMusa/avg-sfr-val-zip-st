@@ -244,9 +244,10 @@ if 'df' not in st.session_state:
 # Page Header
 st.write('<h1 style=text-align:center>Average Single Family Residence (SFR) Values</h1>', unsafe_allow_html=True)
 st.write('<h4 style=text-align:center>by ZIP Code</h4>', unsafe_allow_html=True)
+st.write('<p style=text-align:center>(Data Provided by Zillow Group)</p>', unsafe_allow_html=True)
 
 # Filter Expander
-with st.expander('Filter Your ZIP Lookup', expanded=True):
+with st.expander('Filter Your Area Search', expanded=True):
     # Main Filter Layout
     r1col1, r1col2 = st.columns(2)
     r2col1, r2col2 = st.columns(2)
@@ -298,6 +299,19 @@ with st.expander('Filter Your ZIP Lookup', expanded=True):
     if zip_fltr:
         zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips')
         st.session_state['filtered_df'] = st.session_state['filtered_df'].loc[zip_slctr]
+
+# Welcome Note
+st.subheader('Welcome! Before you get started...')
+"""
+The purpose of this site is to help share the story of how home values (specifically single family houses) have changed in the United States.
+The information used to tell this story is based on the average value of homes per ZIP code across the country since January 2000.
+To help paint this picture in an interactive way, there are visualizations provided on the other pages of this site.
+Each visualization is based on the filter that is at the top of the page. For ease of use, the filters are synced across the site.
+However, for the sake of performance, the data shown is limited to one metroplex of a single state at a time.
+Areas that are not a part of known metroplex will be labeled under, \"Unrecognized Metroplex\".
+You may still select multiple counties, cities, and even specific ZIP codes.\n
+Happy searching!
+"""
 
 # Empty Unused Variables
 r1col1 = None

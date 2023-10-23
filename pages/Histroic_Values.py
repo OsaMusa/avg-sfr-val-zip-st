@@ -28,8 +28,11 @@ if 'default_cities' not in st.session_state:
 if 'default_zips' not in st.session_state:
     st.session_state['default_zips'] = ['99501']
 
-if 'chart_list_view' not in st.session_state:
-    st.session_state['chart_list_view'] = False
+if 'default_timeframe' not in st.session_state:
+    st.session_state['default_timeframe'] = 0
+
+if 'chrt_dtbl_view' not in st.session_state:
+    st.session_state['chrt_dtbl_view'] = False
 
 if 'zip_toggle_pos' not in st.session_state:
     st.session_state['zip_toggle_pos'] = False
@@ -231,8 +234,14 @@ def update_zip_toggle():
     st.session_state['zip_toggle_pos'] = st.session_state['zip_toggle']
 
 
-def update_chart_list():
-    st.session_state['chart_list_view'] = st.session_state['chart_list']
+def update_chrt_dtbl():
+    st.session_state['chrt_dtbl_view'] = st.session_state['chrt_dtbl']
+
+
+def update_timeframe():
+    timeframe = ['3yrs', '5yrs', '10yrs', 'Max (Since 2000)']
+    st.session_state['default_timeframe'] = timeframe.index(st.session_state['chosen_timeframe'])
+    timeframe = None
 
 
 def load_geometries(state:str):
@@ -311,13 +320,46 @@ st.session_state['historic_data'] = st.session_state['filtered_df'].iloc[:,4:].t
 
 # Line Chart
 st.subheader('Value History')
-st.line_chart(st.session_state['historic_data'])
 
-# Display Map Data Table
-if st.checkbox('View the Full List', st.session_state['chart_list_view'], key='chart_list', on_change=update_chart_list):
-    st.dataframe(
-        st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=['Metro', 'County', 'State'])
-    )
+# Select the Line Chart Timeframe
+timeframe = st.selectbox('Timeframe', ['3yrs', '5yrs', '10yrs', 'Max (Since 2000)'], st.session_state['default_timeframe'], key='chosen_timeframe', on_change=update_timeframe)
+
+# Display Line Chart Based on Timeframe
+match timeframe:
+    case '3yrs':
+        st.line_chart(st.session_state['historic_data'].iloc[-37:])
+    case '5yrs':
+        st.line_chart(st.session_state['historic_data'].iloc[-61:])
+    case '10yrs':
+        st.line_chart(st.session_state['historic_data'].iloc[-121:])
+    case 'Max (Since 2000)':
+        st.line_chart(st.session_state['historic_data'])
+
+# Display Relevant Data Table
+if st.checkbox('View the Full List', st.session_state['chrt_dtbl_view'], key='chrt_dtbl', on_change=update_chrt_dtbl):
+    
+    rm_cols = ['Metro', 'County', 'State']
+    
+    match timeframe:
+        case '3yrs':
+            cols = ['City'] + st.session_state['val_dates'][-37:]
+            st.dataframe(
+                st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=rm_cols)[cols]
+            )
+        case '5yrs':
+            cols = ['City'] + st.session_state['val_dates'][-61:]
+            st.dataframe(
+                st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=rm_cols)[cols]
+            )
+        case '10yrs':
+            cols = ['City'] + st.session_state['val_dates'][-121:]
+            st.dataframe(
+                st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=rm_cols)[cols]
+            )
+        case 'Max (Since 2000)':
+            st.dataframe(
+                st.session_state['filtered_df'].sort_values(st.session_state['filtered_df'].columns[-1], ascending=False).drop(columns=rm_cols)
+            )
 
 # Empty Unused Variables
 r1col1 = None
@@ -332,3 +374,6 @@ zip_fltr = None
 zip_slctr = None
 zip_col1 = None
 zip_col2 = None
+timeframe = None
+rm_cols = None
+cols = None

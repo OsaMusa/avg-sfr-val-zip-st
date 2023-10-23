@@ -36,8 +36,8 @@ if 'zip_toggle_pos' not in st.session_state:
 if 'map_toggle_pos' not in st.session_state:
     st.session_state['map_toggle_pos'] = False
 
-if 'map_list_view' not in st.session_state:
-    st.session_state['map_list_view'] = False
+if 'map_dtbl_view' not in st.session_state:
+    st.session_state['map_dtbl_view'] = False
 
 if 'date_slider' not in st.session_state:
     st.session_state['date_slider'] = None
@@ -243,8 +243,8 @@ def update_map_toggle():
     st.session_state['map_toggle_pos'] = st.session_state['map_toggle']
 
 
-def update_map_list():
-    st.session_state['map_list_view'] = st.session_state['map_list']
+def update_map_dtbl():
+    st.session_state['map_dtbl_view'] = st.session_state['map_dtbl']
 
 
 def update_chosen_date():
@@ -456,7 +456,7 @@ with hl_zips3:
 data_col1, data_col2 = st.columns([.3, .7])
 with data_col1:
     st.subheader('')
-    if st.checkbox('View the Full List', st.session_state['map_list_view'], key='map_list', on_change=update_map_list):
+    if st.checkbox('View the Full List', st.session_state['map_dtbl_view'], key='map_dtbl', on_change=update_map_dtbl):
         st.dataframe(
             st.session_state['filtered_df'][['City', date_fltr]].sort_values(date_fltr, ascending=False).rename(columns={date_fltr:'Value'}),
             use_container_width=True,

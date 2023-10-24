@@ -1,4 +1,3 @@
-import pgeocode
 import pandas as pd
 import geopandas as gpd
 import streamlit as st
@@ -43,36 +42,9 @@ if 'date_slider' not in st.session_state:
     st.session_state['date_slider'] = None
 
 
-# @st.cache_data(show_spinner='Loading Avg SFR Value Data...', ttl='12h')
+@st.cache_data(show_spinner='Loading Avg SFR Value Data...', ttl='12h')
 def load_data():
-    # Checking Zillow File
-    zillow_raw_df = pd.read_feather(DATA_FILE)
-    zillow_raw_df = zillow_raw_df.rename(columns={'RegionName':'ZIP', 'CountyName':'County'}).drop(columns=['RegionID', 'SizeRank', 'RegionType','StateName'])
-
-    # Add Lat/Long
-    nomi = pgeocode.Nominatim('us')
-    zillow_raw_df['City_Nomi'] = nomi.query_postal_code(zillow_raw_df['ZIP'].tolist()).place_name
-
-    zillow_raw_df.loc[zillow_raw_df['City'].notna(), 'City_Calc'] = zillow_raw_df['City']
-    zillow_raw_df.loc[zillow_raw_df['City'].isna(), 'City_Calc'] = zillow_raw_df['City_Nomi']
-    zillow_raw_df['City'] = zillow_raw_df['City_Calc']
-    zillow_raw_df = zillow_raw_df.drop(columns=['City_Calc', 'City_Nomi'])
-    
-    # Use ZIP as index
-    zillow_raw_df.index = zillow_raw_df['ZIP']
-    zillow_raw_df = zillow_raw_df.drop(columns='ZIP')
-    
-    # Interpolate Gap Months
-    date_df = zillow_raw_df.iloc[:,4:].interpolate(axis=1)
-    zillow_raw_df = zillow_raw_df.iloc[:, :4].merge(date_df, 'left', left_index=True, right_index=True)
-    
-    # Round Values to Nearest Dollar
-    zillow_raw_df.iloc[:, 4:] = zillow_raw_df.iloc[:, 4:].round(0)
-    
-    # Mark Unrecognized Metroplexes
-    zillow_raw_df.loc[:, 'Metro'] = zillow_raw_df.loc[:, 'Metro'].fillna('Unrecognized Metroplex')
-    
-    return zillow_raw_df
+    return pd.read_feather(DATA_FILE)
 
 
 def update_state():
@@ -455,11 +427,10 @@ with hl_zips3:
 # Display  of Map Data Table
 data_col1, data_col2 = st.columns([.3, .7])
 with data_col1:
-    st.subheader('')
     if st.checkbox('View the Full List', st.session_state['map_dtbl_view'], key='map_dtbl', on_change=update_map_dtbl):
         st.dataframe(
             st.session_state['filtered_df'][['City', date_fltr]].sort_values(date_fltr, ascending=False).rename(columns={date_fltr:'Value'}),
-            use_container_width=True,
+            use_container_width=True
         )
 
 # Empty Unused Variables

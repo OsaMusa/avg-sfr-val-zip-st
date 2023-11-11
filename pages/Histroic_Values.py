@@ -202,6 +202,10 @@ def update_cities():
     zip_codes = None
 
 
+def update_zips():
+    st.session_state['default_zips'] = st.session_state['chosen_zips']
+
+
 def update_zip_toggle():
     st.session_state['zip_toggle_pos'] = st.session_state['zip_toggle']
 
@@ -284,7 +288,7 @@ with st.expander('Filter Your Area Search', expanded=True):
 
     # ZIP Filter
     if zip_fltr:
-        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips')
+        zip_slctr = st.multiselect('Choose your ZIP Codes', sorted(st.session_state['filtered_df'].index), st.session_state['default_zips'], key='chosen_zips', on_change=update_zips)
         st.session_state['filtered_df'] = st.session_state['filtered_df'].loc[zip_slctr]
 
 # Create historic dataframe

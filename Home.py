@@ -7,7 +7,7 @@ from os import listdir
 DATA_FILE = Path('zhvi-sfr-zip/zhvi.feather')
 GEOMETRY_DIR = Path('geometries')
 
-st.set_page_config(page_title="Home", layout='wide', page_icon=':house:', initial_sidebar_state='expanded')
+st.set_page_config(page_title="Home", layout='wide', page_icon=':house:', initial_sidebar_state='auto')
 
 if 'zip_state' not in st.session_state:
     st.session_state['zip_state'] = 'Alaska'

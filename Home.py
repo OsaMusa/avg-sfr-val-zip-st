@@ -7,7 +7,7 @@ from os import listdir
 DATA_FILE = Path('zhvi-sfr-zip/zhvi.feather')
 GEOMETRY_DIR = Path('geometries')
 
-st.set_page_config(page_title="Home", layout='wide', page_icon=':house:', initial_sidebar_state='collapsed')
+st.set_page_config(page_title="Home", layout='wide', page_icon=':house:', initial_sidebar_state='expanded')
 
 if 'zip_state' not in st.session_state:
     st.session_state['zip_state'] = 'Alaska'
@@ -284,9 +284,9 @@ The information used to tell this story is based on the average value of homes p
 To help paint this picture in an interactive way, there are visualizations provided on the other pages of this site.
 Each visualization is based on the filter that is at the top of the page. For ease of use, the filters are synced across the site.
 However, for the sake of performance, the data shown is limited to one metroplex of a single state at a time.
-Areas that are not a part of known metroplex will be labeled under, \"Unrecognized Metroplex\".
+Areas that are not a part of a known metroplex will be labeled under, \"Unrecognized Metroplex\".
 You may still select multiple counties, cities, and even specific ZIP codes.\n
-Happy searching!
+You'll find my visualizations in the sidebar. Happy searching!
 """
 
 # Empty Unused Variables

@@ -14,6 +14,7 @@ raw_df = raw_df.rename(columns={'RegionName':'ZIP', 'CountyName':'County'}).drop
 nomi = pgeocode.Nominatim('us')
 raw_df['City_Nomi'] = nomi.query_postal_code(raw_df['ZIP'].tolist()).place_name
 
+# Clean City column
 raw_df.loc[raw_df['City'].notna(), 'City_Calc'] = raw_df['City']
 raw_df.loc[raw_df['City'].isna(), 'City_Calc'] = raw_df['City_Nomi']
 raw_df['City'] = raw_df['City_Calc']

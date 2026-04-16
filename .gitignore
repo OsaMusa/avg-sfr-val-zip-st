@@ -4,3 +4,6 @@ venv*/
 # Raw Data
 data_prep/*
 !data_prep/prepare.py
+
+# Worktree Include
+.worktreeinclude
